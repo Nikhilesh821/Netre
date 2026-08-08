@@ -10,13 +10,13 @@ export function AppShell() {
       <nav className="nav-sidebar surface-panel">
         <div className="nav-links">
           <div className="nav-logo">evizz</div>
-          <NavLink to="/" end className={({ isActive }) => \`nav-item \${isActive ? 'active' : ''}\`} title="Home">
+          <NavLink to="/" end className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`} title="Home">
             <HomeIcon style={{ width: 24, height: 24 }} />
           </NavLink>
-          <NavLink to="/live" className={({ isActive }) => \`nav-item \${isActive ? 'active' : ''}\`} title="Gallery">
+          <NavLink to="/live" className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`} title="Gallery">
             <PhotoIcon style={{ width: 24, height: 24 }} />
           </NavLink>
-          <NavLink to="/playback" className={({ isActive }) => \`nav-item \${isActive ? 'active' : ''}\`} title="Notifications">
+          <NavLink to="/playback" className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`} title="Notifications">
             <BellIcon style={{ width: 24, height: 24 }} />
           </NavLink>
           <button className="nav-item" title="Add Device">
