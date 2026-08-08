@@ -1,34 +1,47 @@
-import { NavLink, Outlet } from 'react-router-dom'
-import { VideoCameraIcon, ChartBarIcon, ClockIcon } from '@heroicons/react/24/outline'
+import { NavLink, Outlet } from 'react-router-dom';
+import { HomeIcon, PhotoIcon, BellIcon, PlusIcon, MagnifyingGlassIcon, UserCircleIcon } from '@heroicons/react/24/outline';
+import { ThemeToggle } from '../components/ThemeToggle';
+import { FeedSidebar } from '../components/FeedSidebar';
 
 export function AppShell() {
   return (
-    <div className="netre-shell">
-      <header className="netre-header">
-        <div className="netre-logo">
-          <div style={{ width: 32, height: 32, background: 'linear-gradient(135deg, var(--accent-primary), var(--accent-secondary))', borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white' }}>
-            <VideoCameraIcon style={{ width: 20, height: 20 }} />
-          </div>
-          Netre
+    <div className="app-container">
+      {/* Left Navigation Sidebar */}
+      <nav className="nav-sidebar surface-panel">
+        <div className="nav-links">
+          <div className="nav-logo">evizz</div>
+          <NavLink to="/" end className={({ isActive }) => \`nav-item \${isActive ? 'active' : ''}\`} title="Home">
+            <HomeIcon style={{ width: 24, height: 24 }} />
+          </NavLink>
+          <NavLink to="/live" className={({ isActive }) => \`nav-item \${isActive ? 'active' : ''}\`} title="Gallery">
+            <PhotoIcon style={{ width: 24, height: 24 }} />
+          </NavLink>
+          <NavLink to="/playback" className={({ isActive }) => \`nav-item \${isActive ? 'active' : ''}\`} title="Notifications">
+            <BellIcon style={{ width: 24, height: 24 }} />
+          </NavLink>
+          <button className="nav-item" title="Add Device">
+            <PlusIcon style={{ width: 24, height: 24 }} />
+          </button>
+          <button className="nav-item" title="Search">
+            <MagnifyingGlassIcon style={{ width: 24, height: 24 }} />
+          </button>
         </div>
-        <nav className="netre-nav">
-          <NavLink to="/" end className={({ isActive }) => isActive ? 'active' : ''}>
-            <ChartBarIcon style={{ width: 16, height: 16, display: 'inline', marginRight: 8, verticalAlign: 'text-bottom' }} />
-            Dashboard
-          </NavLink>
-          <NavLink to="/live" className={({ isActive }) => isActive ? 'active' : ''}>
-            <VideoCameraIcon style={{ width: 16, height: 16, display: 'inline', marginRight: 8, verticalAlign: 'text-bottom' }} />
-            Live View
-          </NavLink>
-          <NavLink to="/playback" className={({ isActive }) => isActive ? 'active' : ''}>
-            <ClockIcon style={{ width: 16, height: 16, display: 'inline', marginRight: 8, verticalAlign: 'text-bottom' }} />
-            Playback
-          </NavLink>
-        </nav>
-      </header>
-      <main className="netre-content">
+        
+        <div className="nav-links">
+          <ThemeToggle />
+          <button className="nav-item" title="Profile">
+            <UserCircleIcon style={{ width: 32, height: 32 }} />
+          </button>
+        </div>
+      </nav>
+
+      {/* Main Content Area */}
+      <main className="main-content surface-panel">
         <Outlet />
       </main>
+
+      {/* Right Feed Sidebar */}
+      <FeedSidebar />
     </div>
-  )
+  );
 }
