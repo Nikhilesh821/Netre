@@ -1,11 +1,32 @@
+import { useState, useEffect } from 'react';
 import { VideoCameraIcon, ExclamationTriangleIcon, ServerIcon, WifiIcon } from '@heroicons/react/24/outline';
+import { fetchCameras, fetchEvents } from '../lib/api';
 
 export function Dashboard() {
+  const [cameraCount, setCameraCount] = useState(4);
+  const [eventCount, setEventCount] = useState(12);
+  const [status, setStatus] = useState('Online');
+
+  useEffect(() => {
+    async function loadData() {
+      try {
+        const cams = await fetchCameras();
+        const evts = await fetchEvents();
+        setCameraCount(cams.length);
+        setEventCount(evts.length);
+        setStatus('API Connected');
+      } catch (err) {
+        console.warn('Backend API not reachable, using dummy data.');
+      }
+    }
+    loadData();
+  }, []);
+
   const metrics = [
-    { name: 'Active Cameras', value: '4', icon: VideoCameraIcon, color: 'var(--success)' },
-    { name: 'Recent Events', value: '12', icon: ExclamationTriangleIcon, color: 'var(--danger)' },
+    { name: 'Active Cameras', value: cameraCount.toString(), icon: VideoCameraIcon, color: 'var(--success)' },
+    { name: 'Recent Events', value: eventCount.toString(), icon: ExclamationTriangleIcon, color: 'var(--danger)' },
     { name: 'Storage Used', value: '45%', icon: ServerIcon, color: 'var(--text-main)' },
-    { name: 'System Status', value: 'Online', icon: WifiIcon, color: 'var(--success)' },
+    { name: 'System Status', value: status, icon: WifiIcon, color: 'var(--success)' },
   ];
 
   return (
