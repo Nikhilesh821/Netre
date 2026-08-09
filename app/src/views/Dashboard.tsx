@@ -72,32 +72,43 @@ export function Dashboard() {
         )}
 
         {(activeTab === 'Overview' || activeTab === 'Health') && (
-          <div className="surface-panel" style={{ padding: 24, minHeight: 400 }}>
-            <h2 style={{ fontSize: 18, fontWeight: 600, marginBottom: 24 }}>Activity Chart</h2>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: 280, color: 'var(--text-muted)', border: '1px dashed var(--border)', borderRadius: 'var(--radius-md)' }}>
-              Chart Data Unavailable
-            </div>
-          </div>
-          
-          <div className="surface-panel" style={{ padding: 24, minHeight: 400 }}>
-            <h2 style={{ fontSize: 18, fontWeight: 600, marginBottom: 24 }}>System Health</h2>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
-              <div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8, fontSize: 14 }}>
-                  <span style={{ color: 'var(--text-muted)' }}>CPU Usage</span>
-                  <span style={{ fontWeight: 600 }}>24%</span>
-                </div>
-                <div style={{ width: '100%', height: 8, background: 'var(--bg-app)', borderRadius: 4, overflow: 'hidden' }}>
-                  <div style={{ width: '24%', height: '100%', background: 'var(--text-main)', borderRadius: 4 }} />
-                </div>
+          <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 24 }}>
+            <div className="surface-panel" style={{ padding: 24, minHeight: 400 }}>
+              <h2 style={{ fontSize: 18, fontWeight: 600, marginBottom: 24 }}>Activity Chart</h2>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: 280, color: 'var(--text-muted)', border: '1px dashed var(--border)', borderRadius: 'var(--radius-md)' }}>
+                Chart Data Unavailable
               </div>
-              <div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8, fontSize: 14 }}>
-                  <span style={{ color: 'var(--text-muted)' }}>Memory</span>
-                  <span style={{ fontWeight: 600 }}>4.2 GB / 16 GB</span>
+            </div>
+            
+            <div className="surface-panel" style={{ padding: 24, minHeight: 400 }}>
+              <h2 style={{ fontSize: 18, fontWeight: 600, marginBottom: 24 }}>System Health</h2>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+                <div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8, fontSize: 14 }}>
+                    <span style={{ color: 'var(--text-muted)' }}>CPU Usage</span>
+                    <span style={{ fontWeight: 600 }}>24%</span>
+                  </div>
+                  <div style={{ width: '100%', height: 8, background: 'var(--bg-app)', borderRadius: 4, overflow: 'hidden' }}>
+                    <div style={{ width: '24%', height: '100%', background: 'var(--text-main)', borderRadius: 4 }} />
+                  </div>
                 </div>
-                <div style={{ width: '100%', height: 8, background: 'var(--bg-app)', borderRadius: 4, overflow: 'hidden' }}>
-                  <div style={{ width: '26%', height: '100%', background: 'var(--text-main)', borderRadius: 4 }} />
+                <div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8, fontSize: 14 }}>
+                    <span style={{ color: 'var(--text-muted)' }}>Memory</span>
+                    <span style={{ fontWeight: 600 }}>4.2 GB / 8 GB</span>
+                  </div>
+                  <div style={{ width: '100%', height: 8, background: 'var(--bg-app)', borderRadius: 4, overflow: 'hidden' }}>
+                    <div style={{ width: '52%', height: '100%', background: 'var(--text-main)', borderRadius: 4 }} />
+                  </div>
+                </div>
+                <div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8, fontSize: 14 }}>
+                    <span style={{ color: 'var(--text-muted)' }}>Network</span>
+                    <span style={{ fontWeight: 600 }}>12.4 Mbps</span>
+                  </div>
+                  <div style={{ width: '100%', height: 8, background: 'var(--bg-app)', borderRadius: 4, overflow: 'hidden' }}>
+                    <div style={{ width: '15%', height: '100%', background: 'var(--text-main)', borderRadius: 4 }} />
+                  </div>
                 </div>
               </div>
             </div>

@@ -91,7 +91,7 @@ export function LiveView() {
               ))}
             </div>
           </div>
-        ))}
+          ))
         )}
       </div>
     </>
