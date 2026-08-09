@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { WifiIcon, Battery50Icon, EllipsisHorizontalIcon } from '@heroicons/react/24/outline';
+import { ZoneEditor } from '../components/ZoneEditor';
 
 const CAMERA_GROUPS = [
   {
@@ -22,6 +23,7 @@ const CAMERA_GROUPS = [
 
 export function LiveView() {
   const [activeFilter, setActiveFilter] = useState('All');
+  const [editingZoneFor, setEditingZoneFor] = useState<number | null>(null);
   
   const filters = ['All', 'Basement', 'Backyard', "Front Door", "Kid's Room", 'Kitchen'];
   
@@ -83,9 +85,17 @@ export function LiveView() {
                   </div>
                   
                   {/* Bottom Overlays */}
-                  <div style={{ position: 'absolute', bottom: 16, left: 16, color: 'white' }}>
-                    <div style={{ fontWeight: 600 }}>{cam.name}</div>
-                    <div style={{ fontSize: 12, opacity: 0.8, marginTop: 4 }}>{cam.time}</div>
+                  <div style={{ position: 'absolute', bottom: 16, left: 16, color: 'white', display: 'flex', justifyContent: 'space-between', right: 16, alignItems: 'flex-end' }}>
+                    <div>
+                      <div style={{ fontWeight: 600 }}>{cam.name}</div>
+                      <div style={{ fontSize: 12, opacity: 0.8, marginTop: 4 }}>{cam.time}</div>
+                    </div>
+                    <button 
+                      onClick={() => setEditingZoneFor(cam.id)}
+                      style={{ padding: '6px 12px', background: 'rgba(0,0,0,0.6)', border: '1px solid rgba(255,255,255,0.2)', color: 'white', borderRadius: '4px', cursor: 'pointer', fontSize: 12, backdropFilter: 'blur(4px)' }}
+                    >
+                      Draw Zones
+                    </button>
                   </div>
                 </div>
               ))}
@@ -94,6 +104,13 @@ export function LiveView() {
           ))
         )}
       </div>
+
+      {editingZoneFor !== null && (
+        <ZoneEditor 
+          cameraId={editingZoneFor} 
+          onClose={() => setEditingZoneFor(null)} 
+        />
+      )}
     </>
   );
 }
