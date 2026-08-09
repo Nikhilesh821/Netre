@@ -6,6 +6,8 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from core.database import init_db
 from routers import cameras, events, recordings, streams
+import asyncio
+from services.ai_worker import ai_background_task
 
 log = logging.getLogger("open_nvr.server")
 
@@ -15,9 +17,15 @@ async def lifespan(app: FastAPI):
     log.info("Starting up Netre VMS server...")
     init_db()
     log.info("Database initialized.")
+    
+    # Start the AI Background Worker
+    ai_task = asyncio.create_task(ai_background_task())
+    
     yield
+    
     # Shutdown
     log.info("Shutting down Netre VMS server...")
+    ai_task.cancel()
 
 app = FastAPI(
     title="Netre VMS API",
