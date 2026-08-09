@@ -18,29 +18,31 @@ except ImportError:
 
 router = APIRouter(prefix="/streams", tags=["streams"])
 
-async def frame_generator(url: str):
+def frame_generator(url: str):
     if not UniversalFrameSource:
         yield b""
         return
         
     source = UniversalFrameSource(url)
-    try:
-        while True:
-            frame = source.read()
-            if frame is None:
-                await asyncio.sleep(0.1)
-                continue
-                
-            ret, buffer = cv2.imencode('.jpg', frame)
-            if not ret:
-                continue
-                
-            yield (b'--frame\r\n'
-                   b'Content-Type: image/jpeg\r\n\r\n' + buffer.tobytes() + b'\r\n')
+    
+    # Iterate over the Frame generator
+    for frame in source.stream():
+        # frame.data is YUV_I420 bytes
+        import numpy as np
+        yuv = np.frombuffer(frame.data, dtype=np.uint8).reshape((int(frame.height * 1.5), frame.width))
+        bgr = cv2.cvtColor(yuv, cv2.COLOR_YUV2BGR_I420)
+        
+        # Downscale for lower latency MJPEG streaming
+        scale = 720 / max(frame.height, 1)
+        if scale < 1.0:
+            bgr = cv2.resize(bgr, (int(frame.width * scale), int(frame.height * scale)))
+        
+        ret, buffer = cv2.imencode('.jpg', bgr, [cv2.IMWRITE_JPEG_QUALITY, 60])
+        if not ret:
+            continue
             
-            await asyncio.sleep(1/30) # ~30 fps
-    finally:
-        source.release()
+        yield (b'--frame\r\n'
+               b'Content-Type: image/jpeg\r\n\r\n' + buffer.tobytes() + b'\r\n')
 
 @router.get("/live/{camera_id}")
 def get_live_stream(camera_id: int, db: Session = Depends(get_db)):
