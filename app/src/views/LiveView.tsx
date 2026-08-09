@@ -1,29 +1,28 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { WifiIcon, Battery50Icon, EllipsisHorizontalIcon } from '@heroicons/react/24/outline';
 import { ZoneEditor } from '../components/ZoneEditor';
-
-const CAMERA_GROUPS = [
-  {
-    name: 'Basement',
-    cameras: [
-      { id: 1, name: 'Camera 1', time: '15-05-2024 12:19:49 PM', value: 86 },
-      { id: 2, name: 'Camera 2', time: '15-05-2024 12:19:49 PM', value: 56 },
-    ]
-  },
-  {
-    name: 'Backyard',
-    cameras: [
-      { id: 3, name: 'Camera 1', time: '15-05-2024 12:19:49 PM', value: 32 },
-      { id: 4, name: 'Camera 2', time: '15-05-2024 12:19:49 PM', value: 18 },
-      { id: 5, name: 'Camera 3', time: '15-05-2024 12:19:49 PM', value: 24 },
-      { id: 6, name: 'Camera 4', time: '15-05-2024 12:19:49 PM', value: 14 },
-    ]
-  }
-];
+import { fetchCameras } from '../lib/api';
 
 export function LiveView() {
   const [activeFilter, setActiveFilter] = useState('All');
   const [editingZoneFor, setEditingZoneFor] = useState<number | null>(null);
+  const [cameras, setCameras] = useState<any[]>([]);
+
+  useEffect(() => {
+    fetchCameras().then(data => setCameras(data)).catch(console.error);
+  }, []);
+
+  const CAMERA_GROUPS = [
+    {
+      name: 'All Cameras',
+      cameras: cameras.map(c => ({
+        id: c.id,
+        name: c.name,
+        time: new Date(c.created_at || Date.now()).toLocaleString(),
+        value: c.status === 'online' ? 100 : 0
+      }))
+    }
+  ];
   
   const filters = ['All', 'Basement', 'Backyard', "Front Door", "Kid's Room", 'Kitchen'];
   

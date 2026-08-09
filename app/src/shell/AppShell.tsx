@@ -7,6 +7,9 @@ import { Logo } from '../components/Logo';
 
 export function AppShell() {
   const [showAddModal, setShowAddModal] = useState(false);
+  const [newCamName, setNewCamName] = useState('');
+  const [newCamUrl, setNewCamUrl] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   return (
     <div className="app-container">
@@ -56,13 +59,29 @@ export function AppShell() {
               <button className="btn-icon" onClick={() => setShowAddModal(false)}><XMarkIcon style={{ width: 20, height: 20 }} /></button>
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-              <input type="text" placeholder="Camera Name" style={{ padding: '8px 12px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--bg-app)', color: 'var(--text-main)' }} />
-              <input type="text" placeholder="RTSP Stream URL" style={{ padding: '8px 12px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--bg-app)', color: 'var(--text-main)' }} />
-              <button style={{ padding: '10px', background: 'var(--accent-secondary)', color: 'white', border: 'none', borderRadius: 6, fontWeight: 500, cursor: 'pointer' }} onClick={() => {
-                alert('Camera added!');
-                setShowAddModal(false);
+              <input type="text" placeholder="Camera Name (e.g. Phone Camera)" value={newCamName} onChange={e => setNewCamName(e.target.value)} style={{ padding: '8px 12px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--bg-app)', color: 'var(--text-main)' }} />
+              <input type="text" placeholder="IP Camera Stream URL (e.g. http://192.168.1.5:8080/video)" value={newCamUrl} onChange={e => setNewCamUrl(e.target.value)} style={{ padding: '8px 12px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--bg-app)', color: 'var(--text-main)' }} />
+              <button disabled={isSubmitting} style={{ padding: '10px', background: 'var(--accent-secondary)', color: 'white', border: 'none', borderRadius: 6, fontWeight: 500, cursor: isSubmitting ? 'not-allowed' : 'pointer', opacity: isSubmitting ? 0.7 : 1 }} onClick={async () => {
+                if (!newCamName || !newCamUrl) return alert("Please fill all fields");
+                setIsSubmitting(true);
+                try {
+                  const res = await fetch('http://localhost:8000/api/v1/cameras/', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ name: newCamName, stream_url: newCamUrl, source_type: 'live', status: 'online' })
+                  });
+                  if (!res.ok) throw new Error('Failed to save');
+                  alert('Camera added successfully! Refresh to see changes.');
+                  setShowAddModal(false);
+                  setNewCamName('');
+                  setNewCamUrl('');
+                } catch(e) {
+                  alert('Error adding camera. Is the backend running?');
+                } finally {
+                  setIsSubmitting(false);
+                }
               }}>
-                Save Camera
+                {isSubmitting ? 'Saving...' : 'Save Camera'}
               </button>
             </div>
           </div>

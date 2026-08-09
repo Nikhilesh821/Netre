@@ -43,9 +43,14 @@ async def frame_generator(url: str):
         source.release()
 
 @router.get("/live/{camera_id}")
-def get_live_stream(camera_id: int):
-    # For prototyping, we directly serve the local test video as a simulated live stream
-    stream_url = str(Path(__file__).parent.parent.parent.parent / "test_video.mp4")
+def get_live_stream(camera_id: int, db: Session = Depends(get_db)):
+    db_camera = db.query(models.Camera).filter(models.Camera.id == camera_id).first()
+    
+    if db_camera and db_camera.stream_url:
+        stream_url = db_camera.stream_url
+    else:
+        # Fallback to local test video if no real RTSP stream is configured
+        stream_url = str(Path(__file__).parent.parent.parent.parent / "test_video.mp4")
     
     return StreamingResponse(
         frame_generator(stream_url), 
