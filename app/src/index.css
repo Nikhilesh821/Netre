@@ -96,6 +96,12 @@ h1, h2, h3, h4, h5, h6 {
   padding: 24px 16px;
   justify-content: space-between;
   flex-shrink: 0;
+  transition: width 0.3s ease;
+}
+
+.nav-sidebar.collapsed {
+  width: 80px;
+  padding: 24px 8px;
 }
 
 .nav-logo-container {
@@ -110,6 +116,7 @@ h1, h2, h3, h4, h5, h6 {
   flex-direction: column;
   gap: 12px;
   width: 100%;
+  align-items: center;
 }
 
 .nav-item {
@@ -129,6 +136,12 @@ h1, h2, h3, h4, h5, h6 {
   font-size: 15px;
   font-weight: 500;
   font-family: 'Inter', sans-serif;
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+.nav-sidebar.collapsed .nav-item span {
+  display: none;
 }
 
 .nav-item:hover {

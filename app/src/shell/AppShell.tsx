@@ -10,11 +10,12 @@ export function AppShell() {
   const [newCamName, setNewCamName] = useState('');
   const [newCamUrl, setNewCamUrl] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isSidebarExpanded, setIsSidebarExpanded] = useState(true);
 
   return (
     <div className="app-container">
       {/* Left Navigation Sidebar */}
-      <nav className="nav-sidebar surface-panel">
+      <nav className={`nav-sidebar surface-panel ${!isSidebarExpanded ? 'collapsed' : ''}`}>
         <div className="nav-links">
           <Logo className="nav-logo-container" />
           <NavLink to="/" end className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`} title="Dashboard">
@@ -42,11 +43,17 @@ export function AppShell() {
         <div className="nav-links">
           <div style={{ display: 'flex', alignItems: 'center', padding: '0 16px', gap: 16, marginBottom: 8 }}>
              <ThemeToggle />
-             <span style={{ fontSize: 13, color: 'var(--text-muted)' }}>Theme</span>
+             {isSidebarExpanded && <span style={{ fontSize: 13, color: 'var(--text-muted)' }}>Theme</span>}
           </div>
           <button className="nav-item" title="Profile">
             <UserCircleIcon style={{ width: 24, height: 24 }} />
             <span>Account</span>
+          </button>
+          <button className="nav-item" title="Toggle Sidebar" onClick={() => setIsSidebarExpanded(!isSidebarExpanded)} style={{ marginTop: 16 }}>
+            <svg style={{ width: 24, height: 24, transform: isSidebarExpanded ? 'rotate(180deg)' : 'none', transition: 'transform 0.3s' }} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 5l7 7-7 7M5 5l7 7-7 7" />
+            </svg>
+            <span>Collapse</span>
           </button>
         </div>
       </nav>

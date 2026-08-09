@@ -1,20 +1,18 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { WifiIcon, Battery50Icon, MicrophoneIcon, VideoCameraIcon, CameraIcon, SpeakerWaveIcon, BackwardIcon, ForwardIcon, PlayIcon, PauseIcon, Cog6ToothIcon, ArrowsPointingOutIcon, CloudArrowUpIcon, DocumentDuplicateIcon } from '@heroicons/react/24/outline';
-
-const CLIPS = [
-  { time: '12:19:49 PM', count: 2, offset: '10%' },
-  { time: '11:39 AM', count: 3, offset: '30%' },
-  { time: '10:56 AM', count: 1, active: true, offset: '50%' },
-  { time: '10:25 AM', count: 4, offset: '70%' },
-  { time: '09:34 AM', count: 4, offset: '90%' },
-];
+import { fetchEvents } from '../lib/api';
 
 export function PlaybackView() {
   const [activeFilter, setActiveFilter] = useState('All Events');
   const [isPlaying, setIsPlaying] = useState(true);
+  const [events, setEvents] = useState<any[]>([]);
   const videoRef = useRef<HTMLVideoElement>(null);
   
   const filters = ['All Events', 'Doorbell Call', 'Intelligent Detection'];
+
+  useEffect(() => {
+    fetchEvents(undefined, 10).then(setEvents).catch(console.error);
+  }, []);
 
   const togglePlay = () => {
     if (videoRef.current) {
@@ -131,28 +129,42 @@ export function PlaybackView() {
           
           <div style={{ position: 'relative', height: 120, borderTop: '1px solid var(--border)', marginTop: 8 }}>
             {/* Time markers */}
-            {CLIPS.map((clip, i) => (
-              <div key={i} style={{ position: 'absolute', left: clip.offset, transform: 'translateX(-50%)', top: 0, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                <div style={{ width: 1, height: 12, background: 'var(--border)' }}></div>
-                <div style={{ fontSize: 12, color: clip.active ? 'var(--accent-primary)' : 'var(--text-muted)', marginTop: 4, fontWeight: clip.active ? 600 : 400 }}>{clip.time}</div>
+            {events.map((evt, i) => {
+              // Distribute events visually across the timeline for demo
+              const offset = `${10 + (i * (80 / Math.max(1, events.length - 1)))}%`;
+              return (
+              <div 
+                key={evt.id} 
+                style={{ position: 'absolute', left: offset, transform: 'translateX(-50%)', top: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', cursor: 'pointer', zIndex: 10 }}
+                onClick={() => {
+                   if (videoRef.current) {
+                      videoRef.current.currentTime = Math.random() * (videoRef.current.duration || 10);
+                      videoRef.current.play();
+                      setIsPlaying(true);
+                   }
+                }}
+              >
+                <div style={{ width: 3, height: 16, background: 'var(--danger)', borderRadius: 2 }}></div>
+                <div style={{ fontSize: 12, color: 'var(--text-main)', marginTop: 4, fontWeight: 600 }}>
+                  {new Date(evt.occurred_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                </div>
                 
                 {/* Thumbnails */}
                 <div style={{ 
                   marginTop: 8, 
-                  background: clip.active ? 'var(--border)' : 'var(--bg-app)', 
+                  background: 'var(--bg-app)', 
                   borderRadius: 'var(--radius-sm)',
-                  padding: 4,
+                  padding: '4px 8px',
                   display: 'flex',
                   flexDirection: 'column',
                   alignItems: 'center',
-                  boxShadow: clip.active ? 'var(--shadow-md)' : 'none',
-                  border: clip.active ? '2px solid var(--accent-primary)' : '1px solid transparent'
+                  border: '1px solid var(--danger)'
                 }}>
-                  <div style={{ width: 64, height: 48, background: 'var(--text-muted)', borderRadius: 4 }}></div>
-                  <div style={{ fontSize: 12, marginTop: 4, fontWeight: 500 }}>{clip.count} clips</div>
+                  <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--danger)' }}>{evt.label}</div>
+                  <div style={{ fontSize: 10, color: 'var(--text-muted)' }}>{Math.round(evt.confidence * 100)}%</div>
                 </div>
               </div>
-            ))}
+            )})}
             
             {/* Active Line indicator */}
             <div style={{ position: 'absolute', left: '50%', top: 0, bottom: 0, width: 2, background: 'var(--text-main)' }}></div>

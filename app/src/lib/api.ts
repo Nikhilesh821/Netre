@@ -6,16 +6,36 @@ export async function fetchCameras() {
   return res.json();
 }
 
-export async function fetchEvents(limit = 100) {
-  const res = await fetch(`${API_BASE}/events/?limit=${limit}`);
-  if (!res.ok) throw new Error('Failed to fetch events');
-  return res.json();
-}
 
 export async function fetchRecordings(cameraId?: string) {
   const url = cameraId ? `${API_BASE}/recordings/?camera_id=${cameraId}` : `${API_BASE}/recordings/`;
   const res = await fetch(url);
   if (!res.ok) throw new Error('Failed to fetch recordings');
+}
+
+export async function fetchSystemStats() {
+  const res = await fetch(`${API_BASE}/events/system-stats`);
+  if (!res.ok) throw new Error('Failed to fetch stats');
+  return res.json();
+}
+
+export async function fetchEvents(cameraId?: number, limit: number = 100) {
+  let url = `${API_BASE}/events/?limit=${limit}`;
+  if (cameraId) url += `&camera_id=${cameraId}`;
+  
+  const res = await fetch(url);
+  if (!res.ok) throw new Error('Failed to fetch events');
+  return res.json();
+}
+
+export async function searchEvents(query: string) {
+  const res = await fetch(`${API_BASE}/events/search`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ query })
+  });
+  if (!res.ok) throw new Error('Failed to search events');
+  return res.json();
 }
 
 export async function fetchZones(cameraId: number) {
