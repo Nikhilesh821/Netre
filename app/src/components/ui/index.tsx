@@ -21,7 +21,7 @@
 // Colors come exclusively from the CSS variable tokens in index.css.
 
 import { clsx } from 'clsx'
-import { CircleAlert, Inbox, RefreshCw } from 'lucide-react'
+import { AlertCircle, Inbox, RefreshCw } from 'lucide-react'
 import type { ReactNode, ButtonHTMLAttributes, TableHTMLAttributes, HTMLAttributes, ThHTMLAttributes, TdHTMLAttributes } from 'react'
 
 /* ----------------------------- Card ----------------------------- */
@@ -141,7 +141,7 @@ export function ErrorCard({ title = 'Error', message, onRetry }: { title?: strin
   return (
     <Card className="border-red-700/40">
       <CardHeader>
-        <CircleAlert size={16} className="text-red-300" />
+        <AlertCircle size={16} className="text-red-300" />
         <CardTitle>{title}</CardTitle>
         {onRetry && (
           <div className="ml-auto">

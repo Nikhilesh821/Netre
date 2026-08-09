@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { NavLink, Outlet } from 'react-router-dom';
-import { HomeIcon, PhotoIcon, BellIcon, PlusIcon, MagnifyingGlassIcon, UserCircleIcon, XMarkIcon } from '@heroicons/react/24/outline';
+import { HomeIcon, PhotoIcon, BellIcon, PlusIcon, MagnifyingGlassIcon, UserCircleIcon, XMarkIcon, ExclamationTriangleIcon } from '@heroicons/react/24/outline';
 import { ThemeToggle } from '../components/ThemeToggle';
 import { FeedSidebar } from '../components/FeedSidebar';
 import { Logo } from '../components/Logo';
@@ -11,6 +11,24 @@ export function AppShell() {
   const [newCamUrl, setNewCamUrl] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSidebarExpanded, setIsSidebarExpanded] = useState(true);
+  const [alertCount, setAlertCount] = useState(0);
+
+  useEffect(() => {
+    const fetchAlerts = async () => {
+      try {
+        const res = await fetch('http://localhost:8000/api/v1/events/recent-alerts');
+        if (res.ok) {
+          const data = await res.json();
+          setAlertCount(data.count || 0);
+        }
+      } catch (e) {
+        // ignore
+      }
+    };
+    fetchAlerts();
+    const interval = setInterval(fetchAlerts, 30000);
+    return () => clearInterval(interval);
+  }, []);
 
   return (
     <div className="app-container">
@@ -29,6 +47,15 @@ export function AppShell() {
           <NavLink to="/playback" className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`} title="Events & Playback">
             <BellIcon style={{ width: 24, height: 24 }} />
             <span>Events & Playback</span>
+          </NavLink>
+          <NavLink to="/events" className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`} title="Events Log">
+            <div style={{ position: 'relative' }}>
+              <ExclamationTriangleIcon style={{ width: 24, height: 24 }} />
+              {alertCount > 0 && (
+                <div style={{ position: 'absolute', top: -4, right: -4, width: 12, height: 12, borderRadius: '50%', background: 'var(--danger)', border: '2px solid var(--bg-surface)' }} />
+              )}
+            </div>
+            <span>Events</span>
           </NavLink>
           <button className="nav-item" title="Add Device" onClick={() => setShowAddModal(true)}>
             <PlusIcon style={{ width: 24, height: 24 }} />

@@ -8,7 +8,7 @@ export function ZoneEditor({ cameraId, onClose }: { cameraId: number, onClose: (
   const [isDrawing, setIsDrawing] = useState(false);
   const [zoneName, setZoneName] = useState('New Zone');
   const [transform, setTransform] = useState({ rotate: 0, scale: 1 });
-  const svgRef = useRef<SVGSVGElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     loadZones();
@@ -24,8 +24,8 @@ export function ZoneEditor({ cameraId, onClose }: { cameraId: number, onClose: (
   };
 
   const getRelativePos = (e: React.MouseEvent): [number, number] | null => {
-    if (!svgRef.current) return null;
-    const rect = svgRef.current.getBoundingClientRect();
+    if (!containerRef.current) return null;
+    const rect = containerRef.current.getBoundingClientRect();
     const x = (e.clientX - rect.left) / rect.width;
     const y = (e.clientY - rect.top) / rect.height;
     return [x, y];
@@ -106,6 +106,18 @@ export function ZoneEditor({ cameraId, onClose }: { cameraId: number, onClose: (
                   <button onClick={handleSave} style={{ flex: 1, padding: '10px', background: '#10b981', color: '#fff', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 600 }}>Save</button>
                   <button onClick={() => { setIsDrawing(false); setCurrentPoints([]); }} style={{ flex: 1, padding: '10px', background: 'transparent', color: 'var(--text-main)', border: '1px solid var(--border)', borderRadius: '8px', cursor: 'pointer' }}>Cancel</button>
                 </div>
+                {currentPoints.length > 0 && (
+                  <button 
+                    onClick={() => setCurrentPoints(pts => pts.slice(0, -1))}
+                    style={{ width: '100%', padding: '8px', background: 'rgba(255,255,255,0.05)', color: 'white', border: '1px solid var(--border)', borderRadius: '8px', cursor: 'pointer' }}
+                  >
+                    Undo Last Point
+                  </button>
+                )}
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, color: 'var(--text-muted)' }}>
+                  <span>{currentPoints.length} points</span>
+                  <span>(min 3 to save)</span>
+                </div>
                 <p style={{ fontSize: 13, color: 'var(--text-muted)', lineHeight: 1.4 }}>Click on the video to place points. A polygon needs at least 3 points.</p>
               </div>
             )}
@@ -141,19 +153,17 @@ export function ZoneEditor({ cameraId, onClose }: { cameraId: number, onClose: (
           </div>
 
           <div style={{ flex: 1, position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <div style={{ position: 'relative', width: '100%', maxWidth: 1280, aspectRatio: '16/9', background: '#000', borderRadius: '8px', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)', transform: `rotate(${transform.rotate}deg) scale(${transform.scale})`, transition: 'transform 0.2s ease-out' }}>
+            <div ref={containerRef} style={{ position: 'relative', width: '100%', maxWidth: 1280, aspectRatio: '16/9', background: '#000', borderRadius: '8px', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)', transform: `rotate(${transform.rotate}deg) scale(${transform.scale})`, transition: 'transform 0.2s ease-out', overflow: 'hidden' }}>
               <img 
                 src={`http://localhost:8000/api/v1/streams/live/${cameraId}`} 
-                style={{ width: '100%', height: '100%', objectFit: 'contain' }}
+                style={{ width: '100%', height: '100%', objectFit: 'fill', position: 'absolute', inset: 0 }}
                 alt="Live Feed"
               />
               <svg 
-                ref={svgRef}
                 style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', cursor: isDrawing ? 'crosshair' : 'default' }}
               onClick={handleClick}
               onMouseMove={handleMouseMove}
               viewBox="0 0 100 100"
-              preserveAspectRatio="none"
             >
               {/* Draw saved zones */}
               {zones.map(z => (
@@ -176,13 +186,43 @@ export function ZoneEditor({ cameraId, onClose }: { cameraId: number, onClose: (
                   strokeDasharray="1 0.5"
                 />
               )}
+
+              {/* Draw closing line if >= 3 points */}
+              {isDrawing && currentPoints.length >= 3 && (
+                <line
+                  x1={currentPoints[currentPoints.length - 1][0] * 100}
+                  y1={currentPoints[currentPoints.length - 1][1] * 100}
+                  x2={currentPoints[0][0] * 100}
+                  y2={currentPoints[0][1] * 100}
+                  stroke="#10b981"
+                  strokeWidth="0.4"
+                  strokeDasharray="1 0.5"
+                  opacity="0.5"
+                />
+              )}
               
               {/* Draw points for active zone */}
               {isDrawing && currentPoints.map((pt, i) => (
-                <circle key={i} cx={pt[0]*100} cy={pt[1]*100} r="1.5" fill="#10b981" stroke="#fff" strokeWidth="0.4" />
+                <circle 
+                  key={i} 
+                  cx={pt[0]*100} 
+                  cy={pt[1]*100} 
+                  r="1.5" 
+                  fill="#10b981" 
+                  stroke="#fff" 
+                  strokeWidth="0.4" 
+                  style={{ animation: 'pulse-point 2s infinite' }}
+                />
               ))}
             </svg>
           </div>
+          <style>{`
+            @keyframes pulse-point {
+              0% { r: 1.5; opacity: 1; }
+              50% { r: 2; opacity: 0.7; }
+              100% { r: 1.5; opacity: 1; }
+            }
+          `}</style>
           </div>
         </div>
       </div>

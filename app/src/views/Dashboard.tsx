@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { VideoCameraIcon, ExclamationTriangleIcon, ServerIcon, WifiIcon, MagnifyingGlassIcon } from '@heroicons/react/24/outline';
-import { fetchCameras, fetchEvents, searchEvents, fetchSystemStats } from '../lib/api';
+import { fetchCameras, fetchEvents, searchEvents, fetchSystemStats, fetchStatsSummary, fetchRecentAlerts, seedDemoData } from '../lib/api';
 
 export function Dashboard() {
   const [activeTab, setActiveTab] = useState('Overview');
@@ -10,16 +10,21 @@ export function Dashboard() {
   const [searchQuery, setSearchQuery] = useState('');
   const [isSearching, setIsSearching] = useState(false);
   const [status, setStatus] = useState('Connecting...');
+  const [statsSummary, setStatsSummary] = useState<any>(null);
+  const [cameras, setCameras] = useState<any[]>([]);
 
   useEffect(() => {
     async function loadData() {
       try {
         const cams = await fetchCameras();
         const evts = await fetchEvents(undefined, 50); // Get latest 50 events
+        const summary = await fetchStatsSummary();
         const stats = await fetchSystemStats();
         
+        setCameras(cams);
         setCameraCount(cams.length);
         setEvents(evts);
+        setStatsSummary(summary);
         setStorageUsed(`${stats.storage_used_mb} MB`);
         setStatus('API Connected');
       } catch (err) {
@@ -28,6 +33,8 @@ export function Dashboard() {
       }
     }
     loadData();
+    const interval = setInterval(loadData, 30000);
+    return () => clearInterval(interval);
   }, []);
 
   const handleSearch = async (e: React.FormEvent) => {
@@ -50,15 +57,24 @@ export function Dashboard() {
   };
 
   const metrics = [
-    { name: 'Active Cameras', value: cameraCount.toString(), icon: VideoCameraIcon, color: 'var(--success)' },
-    { name: 'Total Events', value: events.length.toString(), icon: ExclamationTriangleIcon, color: 'var(--danger)' },
-    { name: 'Storage Used', value: storageUsed, icon: ServerIcon, color: 'var(--text-main)' },
-    { name: 'System Status', value: status, icon: WifiIcon, color: status === 'Offline' ? 'var(--danger)' : 'var(--success)' },
+    { name: 'Active Cameras', value: statsSummary ? `${statsSummary.online_cameras} / ${statsSummary.total_cameras}` : cameraCount.toString(), icon: VideoCameraIcon, color: 'var(--success)' },
+    { name: 'Events (24h)', value: statsSummary ? statsSummary.events_24h.toString() : events.length.toString(), icon: ExclamationTriangleIcon, color: 'var(--danger)' },
+    { name: 'Storage Used', value: statsSummary ? `${statsSummary.storage_used_mb} MB` : storageUsed, icon: ServerIcon, color: 'var(--text-main)' },
+    { name: 'Active Alerts (1h)', value: statsSummary ? statsSummary.active_alerts_1h.toString() : '0', icon: WifiIcon, color: status === 'Offline' ? 'var(--danger)' : 'var(--success)' },
   ];
+
+  const handleSeedData = async () => {
+    try {
+      await seedDemoData();
+      window.location.reload();
+    } catch(e) {
+      console.error(e);
+    }
+  };
 
   return (
     <>
-      <div className="content-header">
+      <div className="content-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <div className="filter-pills">
           {['Overview', 'Health', 'Storage'].map(tab => (
             <button 
@@ -70,6 +86,12 @@ export function Dashboard() {
             </button>
           ))}
         </div>
+        <button 
+          onClick={handleSeedData}
+          style={{ padding: '8px 16px', background: 'var(--accent-secondary)', color: 'white', border: 'none', borderRadius: 8, cursor: 'pointer', fontWeight: 500 }}
+        >
+          Seed Demo Data
+        </button>
       </div>
       
       <div className="content-body" style={{ display: 'flex', flexDirection: 'column', gap: 32 }}>
@@ -78,10 +100,10 @@ export function Dashboard() {
         {activeTab === 'Overview' && (
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 24 }}>
             {metrics.map(metric => (
-              <div key={metric.name} className="surface-panel" style={{ padding: 24, display: 'flex', alignItems: 'center', gap: 20 }}>
+              <div key={metric.name} className="surface-panel" style={{ padding: 24, display: 'flex', alignItems: 'center', gap: 20, background: 'linear-gradient(135deg, var(--bg-app), var(--bg-panel))' }}>
                 <div style={{ 
                   width: 56, height: 56, borderRadius: 'var(--radius-md)', 
-                  background: 'var(--bg-app)',
+                  background: 'var(--bg-surface)',
                   color: metric.color,
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
                   border: '1px solid var(--border)'
@@ -96,6 +118,26 @@ export function Dashboard() {
             ))}
           </div>
         )}
+
+        {activeTab === 'Overview' && cameras.length > 0 && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+            <h2 style={{ fontSize: 18, fontWeight: 600 }}>Camera Status</h2>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 16 }}>
+              {cameras.map(cam => (
+                <div key={cam.id} className="surface-panel" style={{ padding: 16, display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <div style={{ width: 10, height: 10, borderRadius: '50%', background: cam.status === 'online' ? 'var(--success)' : 'var(--danger)' }} />
+                    <span style={{ fontWeight: 600 }}>{cam.name}</span>
+                  </div>
+                  <div style={{ fontSize: 13, color: 'var(--text-muted)' }}>
+                    {cam.zones ? cam.zones.length : 0} Zones
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
         {(activeTab === 'Overview' || activeTab === 'Health') && (
           <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 24 }}>
             <div className="surface-panel" style={{ padding: 24, minHeight: 400, display: 'flex', flexDirection: 'column' }}>
@@ -149,25 +191,25 @@ export function Dashboard() {
                 <div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8, fontSize: 14 }}>
                     <span style={{ color: 'var(--text-muted)' }}>CPU Usage</span>
-                    <span style={{ fontWeight: 600 }}>24%</span>
+                    <span style={{ fontWeight: 600 }}>{statsSummary?.cpu_usage || '24'}%</span>
                   </div>
                   <div style={{ width: '100%', height: 8, background: 'var(--bg-app)', borderRadius: 4, overflow: 'hidden' }}>
-                    <div style={{ width: '24%', height: '100%', background: 'var(--text-main)', borderRadius: 4 }} />
+                    <div style={{ width: `${statsSummary?.cpu_usage || 24}%`, height: '100%', background: 'var(--text-main)', borderRadius: 4 }} />
                   </div>
                 </div>
                 <div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8, fontSize: 14 }}>
                     <span style={{ color: 'var(--text-muted)' }}>Memory</span>
-                    <span style={{ fontWeight: 600 }}>4.2 GB / 8 GB</span>
+                    <span style={{ fontWeight: 600 }}>{statsSummary?.memory_used_gb || '4.2'} GB / {statsSummary?.memory_total_gb || '8'} GB</span>
                   </div>
                   <div style={{ width: '100%', height: 8, background: 'var(--bg-app)', borderRadius: 4, overflow: 'hidden' }}>
-                    <div style={{ width: '52%', height: '100%', background: 'var(--text-main)', borderRadius: 4 }} />
+                    <div style={{ width: `${((statsSummary?.memory_used_gb || 4.2) / (statsSummary?.memory_total_gb || 8)) * 100}%`, height: '100%', background: 'var(--text-main)', borderRadius: 4 }} />
                   </div>
                 </div>
                 <div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8, fontSize: 14 }}>
                     <span style={{ color: 'var(--text-muted)' }}>Network</span>
-                    <span style={{ fontWeight: 600 }}>12.4 Mbps</span>
+                    <span style={{ fontWeight: 600 }}>{statsSummary?.network_mbps || '12.4'} Mbps</span>
                   </div>
                   <div style={{ width: '100%', height: 8, background: 'var(--bg-app)', borderRadius: 4, overflow: 'hidden' }}>
                     <div style={{ width: '15%', height: '100%', background: 'var(--text-main)', borderRadius: 4 }} />

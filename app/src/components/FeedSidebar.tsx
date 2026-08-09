@@ -1,17 +1,42 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { FunnelIcon, Bars3Icon } from '@heroicons/react/24/outline';
-
-const DUMMY_EVENTS = [
-  { id: 1, cam: 'Front Door 2', type: 'PIR Alarm', time: '12:19:49 PM', date: 'Wed 15' },
-  { id: 2, cam: 'Front Door 2', type: 'PIR Alarm', time: '12:01:03 PM', date: 'Wed 15' },
-  { id: 3, cam: 'Front Door 2', type: 'PIR Alarm', time: '11:34:50 AM', date: 'Wed 15' },
-  { id: 4, cam: 'Front Door 1', type: 'PIR Alarm', time: '11:28:15 AM', date: 'Wed 15' },
-  { id: 5, cam: 'Front Door 1', type: 'PIR Alarm', time: '11:34:50 AM', date: 'Wed 15' },
-  { id: 6, cam: 'Front Door 1', type: 'PIR Alarm', time: '11:31:48 AM', date: 'Wed 15' },
-];
 
 export function FeedSidebar() {
   const [activeDate, setActiveDate] = useState('Wed 15');
+  const [events, setEvents] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchEvents = async () => {
+      try {
+        const res = await fetch('http://localhost:8000/api/v1/events/?limit=20');
+        if (res.ok) {
+          const data = await res.json();
+          setEvents(data);
+        }
+      } catch (err) {
+        console.error('Failed to fetch events', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchEvents();
+    const interval = setInterval(fetchEvents, 10000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const isRecent = (dateStr: string) => {
+    if (!dateStr) return false;
+    const eventTime = new Date(dateStr).getTime();
+    const now = new Date().getTime();
+    return (now - eventTime) < 5 * 60 * 1000;
+  };
+
+  const formatTime = (dateStr: string) => {
+    if (!dateStr) return '';
+    return new Date(dateStr).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+  };
 
   return (
     <aside className="feed-sidebar surface-panel">
@@ -37,17 +62,36 @@ export function FeedSidebar() {
       </div>
 
       <div className="feed-list">
-        {DUMMY_EVENTS.map((ev, i) => (
-          <div key={ev.id} className={`feed-card ${i < 2 ? 'unread' : ''}`}>
-            <div className="feed-thumbnail"></div>
-            <div className="feed-info">
-              <div className="feed-camera">{ev.cam}</div>
-              <div className="feed-type">{ev.type}</div>
-              <div className="feed-time">{ev.time}</div>
-            </div>
-          </div>
-        ))}
+        {loading ? (
+          <div style={{ padding: '20px', textAlign: 'center', color: 'var(--text-muted)' }}>Loading events...</div>
+        ) : events.length === 0 ? (
+          <div style={{ padding: '20px', textAlign: 'center', color: 'var(--text-muted)' }}>No events found</div>
+        ) : (
+          events.map((ev) => {
+            const recent = ev.occurred_at && isRecent(ev.occurred_at);
+            return (
+              <div key={ev.id} className="feed-card">
+                <div className="feed-thumbnail"></div>
+                <div className="feed-info">
+                  <div className="feed-camera" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    Camera {ev.camera_id}
+                    {recent && <span style={{ width: 8, height: 8, backgroundColor: '#ef4444', borderRadius: '50%', display: 'inline-block', animation: 'pulse 2s infinite' }} />}
+                  </div>
+                  <div className="feed-type">{ev.label || ev.caption || 'Event'} {ev.confidence ? `(${(ev.confidence * 100).toFixed(0)}%)` : ''}</div>
+                  <div className="feed-time">{ev.occurred_at ? formatTime(ev.occurred_at) : ''}</div>
+                </div>
+              </div>
+            );
+          })
+        )}
       </div>
+      <style>{`
+        @keyframes pulse {
+          0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); }
+          70% { box-shadow: 0 0 0 6px rgba(239, 68, 68, 0); }
+          100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+        }
+      `}</style>
     </aside>
   );
 }

@@ -25,6 +25,13 @@ class CameraBase(BaseModel):
 class CameraCreate(CameraBase):
     pass
 
+class CameraUpdate(BaseModel):
+    name: Optional[str] = None
+    source_type: Optional[str] = None
+    stream_url: Optional[str] = None
+    file_path: Optional[str] = None
+    status: Optional[str] = None
+
 class CameraOut(CameraBase):
     id: int
     status: str

@@ -50,6 +50,47 @@ def list_events(
         
     return query.order_by(models.Event.occurred_at.desc()).limit(limit).all()
 
+from datetime import timedelta
+
+@router.get("/recent-alerts", response_model=List[schemas.EventOut])
+def recent_alerts(db: Session = Depends(get_db)):
+    one_hour_ago = datetime.now() - timedelta(hours=1)
+    return db.query(models.Event).filter(models.Event.occurred_at >= one_hour_ago).order_by(models.Event.occurred_at.desc()).limit(20).all()
+
+@router.get("/stats-summary")
+def stats_summary(db: Session = Depends(get_db)):
+    total_cameras = db.query(models.Camera).count()
+    online_cameras = db.query(models.Camera).filter(models.Camera.status == "online").count()
+    offline_cameras = total_cameras - online_cameras
+    
+    now = datetime.now()
+    one_day_ago = now - timedelta(hours=24)
+    one_hour_ago = now - timedelta(hours=1)
+    
+    total_events_24h = db.query(models.Event).filter(models.Event.occurred_at >= one_day_ago).count()
+    total_events = db.query(models.Event).count()
+    recent_alerts_count = db.query(models.Event).filter(models.Event.occurred_at >= one_hour_ago).count()
+    
+    # storage calculation logic
+    recordings = db.query(models.Recording).all()
+    total_bytes = 0
+    for rec in recordings:
+        if os.path.exists(rec.file_path):
+            total_bytes += os.path.getsize(rec.file_path)
+    db_path = "netre.db"
+    if os.path.exists(db_path):
+        total_bytes += os.path.getsize(db_path)
+        
+    return {
+        "total_cameras": total_cameras,
+        "online_cameras": online_cameras,
+        "offline_cameras": offline_cameras,
+        "total_events_24h": total_events_24h,
+        "total_events": total_events,
+        "storage_used_mb": round(total_bytes / (1024 * 1024), 2),
+        "recent_alerts_count": recent_alerts_count
+    }
+
 from pydantic import BaseModel
 
 class SearchQuery(BaseModel):

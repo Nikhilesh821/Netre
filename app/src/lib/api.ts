@@ -1,4 +1,26 @@
+import axios from 'axios';
+
 const API_BASE = 'http://localhost:8000/api/v1';
+
+export const api = axios.create({
+  baseURL: 'http://localhost:8000',
+});
+
+export function setAuthToken(token: string | null) {
+  if (token) {
+    api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+  } else {
+    delete api.defaults.headers.common['Authorization'];
+  }
+}
+
+export function setDeviceToken(token: string | null) {
+  if (token) {
+    api.defaults.headers.common['X-Device-Token'] = token;
+  } else {
+    delete api.defaults.headers.common['X-Device-Token'];
+  }
+}
 
 export async function fetchCameras() {
   const res = await fetch(`${API_BASE}/cameras/`);
@@ -11,6 +33,7 @@ export async function fetchRecordings(cameraId?: string) {
   const url = cameraId ? `${API_BASE}/recordings/?camera_id=${cameraId}` : `${API_BASE}/recordings/`;
   const res = await fetch(url);
   if (!res.ok) throw new Error('Failed to fetch recordings');
+  return res.json();
 }
 
 export async function fetchSystemStats() {
@@ -59,5 +82,33 @@ export async function deleteZone(cameraId: number, zoneId: number) {
     method: 'DELETE'
   });
   if (!res.ok) throw new Error('Failed to delete zone');
+  return res.json();
+}
+
+export async function fetchRecentAlerts() {
+  const res = await fetch(`${API_BASE}/events/recent-alerts`);
+  if (!res.ok) throw new Error('Failed to fetch recent alerts');
+  return res.json();
+}
+
+export async function fetchStatsSummary() {
+  const res = await fetch(`${API_BASE}/events/stats-summary`);
+  if (!res.ok) throw new Error('Failed to fetch stats');
+  return res.json();
+}
+
+export async function updateCameraStatus(cameraId: number, status: string) {
+  const res = await fetch(`${API_BASE}/cameras/${cameraId}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ status })
+  });
+  if (!res.ok) throw new Error('Failed to update camera');
+  return res.json();
+}
+
+export async function seedDemoData() {
+  const res = await fetch(`${API_BASE}/cameras/seed-demo`, { method: 'POST' });
+  if (!res.ok) throw new Error('Failed to seed demo data');
   return res.json();
 }

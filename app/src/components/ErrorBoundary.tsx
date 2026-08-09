@@ -21,7 +21,7 @@
 // key={location.pathname} so navigating resets the boundary automatically.
 
 import { Component, type ReactNode } from 'react'
-import { CircleAlert, RefreshCw } from 'lucide-react'
+import { AlertCircle, RefreshCw } from 'lucide-react'
 
 type Props = { children: ReactNode; title?: string }
 type State = { error: Error | null }
@@ -43,7 +43,7 @@ export class ErrorBoundary extends Component<Props, State> {
       <div className="p-6">
         <div className="max-w-lg mx-auto rounded border border-red-700/40 bg-[var(--panel-2)]">
           <div className="px-4 py-3 border-b border-[var(--border)] flex items-center gap-2">
-            <CircleAlert size={16} className="text-red-300" />
+            <AlertCircle size={16} className="text-red-300" />
             <h3 className="text-sm font-semibold text-[var(--text)]">{this.props.title ?? 'Something went wrong'}</h3>
           </div>
           <div className="p-4 space-y-3">
