@@ -12,7 +12,6 @@ sys.path.append(os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__f
 
 from detect_pipeline.onnx_detector import OnnxYoloDetector
 from detect_pipeline.detector import RawDetection
-from detect_pipeline.zone_filter import is_inside_zone
 import cv2
 import numpy as np
 
@@ -77,11 +76,14 @@ def run_inference_cycle():
                     except:
                         continue
                         
-                    # Calculate center point of detection box
-                    cx = (det.box[0] + det.box[2]) / 2.0
-                    cy = (det.box[1] + det.box[3]) / 2.0
+                    # Calculate bottom-center of detection box
+                    bx1, by1, bx2, by2 = det.box
+                    cx = (bx1 + bx2) / 2.0
+                    cy = by2 # Bottom center is better for tracking feet on the ground
                     
-                    if is_inside_zone((cx, cy), polygon):
+                    poly_arr = np.array(polygon, dtype=np.float32)
+                    result = cv2.pointPolygonTest(poly_arr, (cx, cy), False)
+                    if result >= 0:
                         # Rate limit events (1 per 10 seconds per zone)
                         key = (cam.id, zone.id)
                         now = time.time()
