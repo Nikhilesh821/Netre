@@ -5,7 +5,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from core.database import init_db
-from routers import cameras, events, recordings
+from routers import cameras, events, recordings, streams
 
 log = logging.getLogger("open_nvr.server")
 
@@ -38,6 +38,7 @@ app.add_middleware(
 app.include_router(cameras.router, prefix="/api/v1")
 app.include_router(events.router, prefix="/api/v1")
 app.include_router(recordings.router, prefix="/api/v1")
+app.include_router(streams.router, prefix="/api/v1")
 
 @app.get("/")
 def read_root():
