@@ -1,4 +1,5 @@
-import { WifiIcon, Battery50Icon, MicrophoneIcon, VideoCameraIcon, CameraIcon, SpeakerWaveIcon, BackwardIcon, ForwardIcon, PlayIcon, Cog6ToothIcon, ArrowsPointingOutIcon, CloudArrowUpIcon, DocumentDuplicateIcon } from '@heroicons/react/24/outline';
+import { useState, useRef } from 'react';
+import { WifiIcon, Battery50Icon, MicrophoneIcon, VideoCameraIcon, CameraIcon, SpeakerWaveIcon, BackwardIcon, ForwardIcon, PlayIcon, PauseIcon, Cog6ToothIcon, ArrowsPointingOutIcon, CloudArrowUpIcon, DocumentDuplicateIcon } from '@heroicons/react/24/outline';
 
 const CLIPS = [
   { time: '12:19:49 PM', count: 2, offset: '10%' },
@@ -9,13 +10,33 @@ const CLIPS = [
 ];
 
 export function PlaybackView() {
+  const [activeFilter, setActiveFilter] = useState('All Events');
+  const [isPlaying, setIsPlaying] = useState(true);
+  const videoRef = useRef<HTMLVideoElement>(null);
+  
+  const filters = ['All Events', 'Doorbell Call', 'Intelligent Detection'];
+
+  const togglePlay = () => {
+    if (videoRef.current) {
+      if (isPlaying) videoRef.current.pause();
+      else videoRef.current.play();
+      setIsPlaying(!isPlaying);
+    }
+  };
+
   return (
     <>
       <div className="content-header">
         <div className="filter-pills">
-          <button className="pill active">All Events</button>
-          <button className="pill">Doorbell Call</button>
-          <button className="pill">Intelligent Detection</button>
+          {filters.map(f => (
+            <button 
+              key={f} 
+              className={`pill ${activeFilter === f ? 'active' : ''}`}
+              onClick={() => setActiveFilter(f)}
+            >
+              {f}
+            </button>
+          ))}
         </div>
       </div>
       
@@ -29,15 +50,24 @@ export function PlaybackView() {
           </div>
         </div>
 
-        {/* Video Player */}
         <div style={{ 
           position: 'relative', 
           aspectRatio: '16/9', 
-          background: 'linear-gradient(45deg, #1f2937, #374151)',
+          background: '#000',
           borderRadius: 'var(--radius-lg)',
           overflow: 'hidden',
           boxShadow: 'var(--shadow-md)'
         }}>
+          {/* Real MP4 video playback */}
+          <video 
+            ref={videoRef}
+            src="http://localhost:8000/api/v1/streams/playback/1" 
+            autoPlay muted loop
+            style={{ width: '100%', height: '100%', objectFit: 'contain' }}
+            onError={(e) => {
+              (e.target as HTMLVideoElement).poster = 'data:image/svg+xml;charset=UTF-8,%3Csvg%20width%3D%22400%22%20height%3D%22225%22%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%3E%3Crect%20width%3D%22400%22%20height%3D%22225%22%20fill%3D%22%231f2937%22%2F%3E%3Ctext%20x%3D%2250%25%22%20y%3D%2250%25%22%20dominant-baseline%3D%22middle%22%20text-anchor%3D%22middle%22%20fill%3D%22%239ca3af%22%20font-family%3D%22sans-serif%22%20font-size%3D%2216%22%3ENo%20Recording%20Found%3C%2Ftext%3E%3C%2Fsvg%3E';
+            }}
+          />
           {/* Top Overlays */}
           <div style={{ position: 'absolute', top: 24, left: 24, display: 'flex', gap: 12, color: 'white' }}>
             <WifiIcon style={{ width: 24, height: 24 }} />
@@ -72,9 +102,13 @@ export function PlaybackView() {
             </div>
             
             <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginLeft: 16 }}>
-              <BackwardIcon style={{ width: 20, height: 20, cursor: 'pointer' }} />
-              <PlayIcon style={{ width: 24, height: 24, cursor: 'pointer' }} />
-              <ForwardIcon style={{ width: 20, height: 20, cursor: 'pointer' }} />
+              <BackwardIcon style={{ width: 20, height: 20, cursor: 'pointer' }} onClick={() => videoRef.current && (videoRef.current.currentTime -= 5)} />
+              {isPlaying ? (
+                <PauseIcon style={{ width: 24, height: 24, cursor: 'pointer' }} onClick={togglePlay} />
+              ) : (
+                <PlayIcon style={{ width: 24, height: 24, cursor: 'pointer' }} onClick={togglePlay} />
+              )}
+              <ForwardIcon style={{ width: 20, height: 20, cursor: 'pointer' }} onClick={() => videoRef.current && (videoRef.current.currentTime += 5)} />
             </div>
             
             <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginLeft: 'auto' }}>

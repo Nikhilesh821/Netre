@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { FunnelIcon, Bars3Icon } from '@heroicons/react/24/outline';
 
 const DUMMY_EVENTS = [
@@ -10,6 +11,8 @@ const DUMMY_EVENTS = [
 ];
 
 export function FeedSidebar() {
+  const [activeDate, setActiveDate] = useState('Wed 15');
+
   return (
     <aside className="feed-sidebar surface-panel">
       <div className="feed-header">
@@ -23,9 +26,9 @@ export function FeedSidebar() {
       <div className="date-selector">
         {['Thu 09', 'Fri 10', 'Sat 11', 'Sun 12', 'Mon 13', 'Tue 14', 'Wed 15'].map(d => {
           const [day, num] = d.split(' ');
-          const isActive = d === 'Wed 15';
+          const isActive = d === activeDate;
           return (
-            <div key={d} className={`date-item ${isActive ? 'active' : ''}`}>
+            <div key={d} className={`date-item ${isActive ? 'active' : ''}`} onClick={() => setActiveDate(d)}>
               <span className="day">{day}</span>
               <span className="date">{num}</span>
             </div>

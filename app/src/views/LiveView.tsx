@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { WifiIcon, Battery50Icon, EllipsisHorizontalIcon } from '@heroicons/react/24/outline';
 
 const CAMERA_GROUPS = [
@@ -20,22 +21,34 @@ const CAMERA_GROUPS = [
 ];
 
 export function LiveView() {
+  const [activeFilter, setActiveFilter] = useState('All');
+  
+  const filters = ['All', 'Basement', 'Backyard', "Front Door", "Kid's Room", 'Kitchen'];
+  
+  const visibleGroups = CAMERA_GROUPS.filter(g => activeFilter === 'All' || g.name === activeFilter);
+
   return (
     <>
       <div className="content-header">
         <div className="filter-pills">
-          <button className="pill active">All</button>
-          <button className="pill">Basement</button>
-          <button className="pill">Backyard</button>
-          <button className="pill">Front Door</button>
-          <button className="pill">Kid's Room</button>
-          <button className="pill">Kitchen</button>
+          {filters.map(f => (
+            <button 
+              key={f} 
+              className={`pill ${activeFilter === f ? 'active' : ''}`}
+              onClick={() => setActiveFilter(f)}
+            >
+              {f}
+            </button>
+          ))}
         </div>
       </div>
       
       <div className="content-body" style={{ display: 'flex', flexDirection: 'column', gap: 32 }}>
-        {CAMERA_GROUPS.map(group => (
-          <div key={group.name} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+        {visibleGroups.length === 0 ? (
+          <div style={{ padding: 40, textAlign: 'center', color: 'var(--text-muted)' }}>No cameras in this group</div>
+        ) : (
+          visibleGroups.map(group => (
+            <div key={group.name} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
             <h2 style={{ fontSize: 24, fontWeight: 600 }}>{group.name}</h2>
             
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))', gap: 16 }}>
@@ -48,8 +61,15 @@ export function LiveView() {
                   overflow: 'hidden',
                   boxShadow: 'var(--shadow-sm)'
                 }}>
-                  {/* Dummy placeholder for video */}
-                  <div style={{ width: '100%', height: '100%', background: 'linear-gradient(45deg, #1f2937, #374151)' }}></div>
+                  {/* Real MJPEG video stream */}
+                  <img 
+                    src={`http://localhost:8000/api/v1/streams/live/${cam.id}`} 
+                    alt={cam.name}
+                    style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                    onError={(e) => {
+                      (e.target as HTMLImageElement).src = 'data:image/svg+xml;charset=UTF-8,%3Csvg%20width%3D%22400%22%20height%3D%22225%22%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%3E%3Crect%20width%3D%22400%22%20height%3D%22225%22%20fill%3D%22%231f2937%22%2F%3E%3Ctext%20x%3D%2250%25%22%20y%3D%2250%25%22%20dominant-baseline%3D%22middle%22%20text-anchor%3D%22middle%22%20fill%3D%22%239ca3af%22%20font-family%3D%22sans-serif%22%20font-size%3D%2216%22%3EOffline%3C%2Ftext%3E%3C%2Fsvg%3E';
+                    }}
+                  />
                   
                   {/* Top Overlays */}
                   <div style={{ position: 'absolute', top: 16, left: 16, display: 'flex', gap: 8, color: 'white' }}>
@@ -72,6 +92,7 @@ export function LiveView() {
             </div>
           </div>
         ))}
+        )}
       </div>
     </>
   );
