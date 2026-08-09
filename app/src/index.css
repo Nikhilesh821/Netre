@@ -90,11 +90,10 @@ h1, h2, h3, h4, h5, h6 {
 
 /* Left Navigation Sidebar */
 .nav-sidebar {
-  width: 80px;
+  width: 260px;
   display: flex;
   flex-direction: column;
-  align-items: center;
-  padding: 24px 0;
+  padding: 24px 16px;
   justify-content: space-between;
   flex-shrink: 0;
 }
@@ -109,17 +108,17 @@ h1, h2, h3, h4, h5, h6 {
 .nav-links {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 12px;
   width: 100%;
-  align-items: center;
 }
 
 .nav-item {
-  width: 48px;
+  width: 100%;
   height: 48px;
   display: flex;
   align-items: center;
-  justify-content: center;
+  padding: 0 16px;
+  gap: 16px;
   border-radius: var(--radius-sm);
   color: var(--text-muted);
   text-decoration: none;
@@ -127,6 +126,9 @@ h1, h2, h3, h4, h5, h6 {
   cursor: pointer;
   background: transparent;
   border: none;
+  font-size: 15px;
+  font-weight: 500;
+  font-family: 'Inter', sans-serif;
 }
 
 .nav-item:hover {

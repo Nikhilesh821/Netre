@@ -17,27 +17,36 @@ export function AppShell() {
       <nav className="nav-sidebar surface-panel">
         <div className="nav-links">
           <Logo className="nav-logo-container" />
-          <NavLink to="/" end className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`} title="Home">
+          <NavLink to="/" end className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`} title="Dashboard">
             <HomeIcon style={{ width: 24, height: 24 }} />
+            <span>Dashboard</span>
           </NavLink>
-          <NavLink to="/live" className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`} title="Gallery">
+          <NavLink to="/live" className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`} title="Live View">
             <PhotoIcon style={{ width: 24, height: 24 }} />
+            <span>Live View</span>
           </NavLink>
-          <NavLink to="/playback" className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`} title="Notifications">
+          <NavLink to="/playback" className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`} title="Events & Playback">
             <BellIcon style={{ width: 24, height: 24 }} />
+            <span>Events & Playback</span>
           </NavLink>
           <button className="nav-item" title="Add Device" onClick={() => setShowAddModal(true)}>
             <PlusIcon style={{ width: 24, height: 24 }} />
+            <span>Add Device</span>
           </button>
-          <button className="nav-item" title="Search" onClick={() => alert('Search feature coming soon!')}>
+          <button className="nav-item" title="Natural-Language Search" onClick={() => alert('Search feature coming soon!')}>
             <MagnifyingGlassIcon style={{ width: 24, height: 24 }} />
+            <span>AI Search</span>
           </button>
         </div>
         
         <div className="nav-links">
-          <ThemeToggle />
+          <div style={{ display: 'flex', alignItems: 'center', padding: '0 16px', gap: 16, marginBottom: 8 }}>
+             <ThemeToggle />
+             <span style={{ fontSize: 13, color: 'var(--text-muted)' }}>Theme</span>
+          </div>
           <button className="nav-item" title="Profile">
-            <UserCircleIcon style={{ width: 32, height: 32 }} />
+            <UserCircleIcon style={{ width: 24, height: 24 }} />
+            <span>Account</span>
           </button>
         </div>
       </nav>
