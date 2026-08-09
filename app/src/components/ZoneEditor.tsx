@@ -183,6 +183,7 @@ export function ZoneEditor({ cameraId, onClose }: { cameraId: number, onClose: (
               ))}
             </svg>
           </div>
+          </div>
         </div>
       </div>
     </div>
