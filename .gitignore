@@ -8,3 +8,9 @@ build/
 *.db
 *.sqlite3
 *.tsbuildinfo
+
+detect-pipeline/models/
+yolov8n.pt
+recordings/
+*.pyc
+

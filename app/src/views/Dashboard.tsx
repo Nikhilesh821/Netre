@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { VideoCameraIcon, ExclamationTriangleIcon, ServerIcon, WifiIcon, MagnifyingGlassIcon } from '@heroicons/react/24/outline';
-import { fetchCameras, fetchEvents, searchEvents, fetchSystemStats, fetchStatsSummary, fetchRecentAlerts, seedDemoData } from '../lib/api';
+import { fetchCameras, fetchEvents, searchEvents, fetchSystemStats, fetchStatsSummary, fetchRecentAlerts } from '../lib/api';
 
 export function Dashboard() {
   const [activeTab, setActiveTab] = useState('Overview');
@@ -57,20 +57,12 @@ export function Dashboard() {
   };
 
   const metrics = [
-    { name: 'Active Cameras', value: statsSummary ? `${statsSummary.online_cameras} / ${statsSummary.total_cameras}` : cameraCount.toString(), icon: VideoCameraIcon, color: 'var(--success)' },
-    { name: 'Events (24h)', value: statsSummary ? statsSummary.events_24h.toString() : events.length.toString(), icon: ExclamationTriangleIcon, color: 'var(--danger)' },
-    { name: 'Storage Used', value: statsSummary ? `${statsSummary.storage_used_mb} MB` : storageUsed, icon: ServerIcon, color: 'var(--text-main)' },
-    { name: 'Active Alerts (1h)', value: statsSummary ? statsSummary.active_alerts_1h.toString() : '0', icon: WifiIcon, color: status === 'Offline' ? 'var(--danger)' : 'var(--success)' },
+    { name: 'Active Cameras', value: statsSummary ? `${statsSummary.online_cameras || 0} / ${statsSummary.total_cameras || 0}` : cameraCount.toString(), icon: VideoCameraIcon, color: 'var(--success)' },
+    { name: 'Events (24h)', value: statsSummary ? (statsSummary.total_events_24h || 0).toString() : events.length.toString(), icon: ExclamationTriangleIcon, color: 'var(--danger)' },
+    { name: 'Storage Used', value: statsSummary ? `${statsSummary.storage_used_mb || 0} MB` : storageUsed, icon: ServerIcon, color: 'var(--text-main)' },
+    { name: 'Active Alerts (1h)', value: statsSummary ? (statsSummary.recent_alerts_count || 0).toString() : '0', icon: WifiIcon, color: status === 'Offline' ? 'var(--danger)' : 'var(--success)' },
   ];
 
-  const handleSeedData = async () => {
-    try {
-      await seedDemoData();
-      window.location.reload();
-    } catch(e) {
-      console.error(e);
-    }
-  };
 
   return (
     <>
@@ -86,12 +78,6 @@ export function Dashboard() {
             </button>
           ))}
         </div>
-        <button 
-          onClick={handleSeedData}
-          style={{ padding: '8px 16px', background: 'var(--accent-secondary)', color: 'white', border: 'none', borderRadius: 8, cursor: 'pointer', fontWeight: 500 }}
-        >
-          Seed Demo Data
-        </button>
       </div>
       
       <div className="content-body" style={{ display: 'flex', flexDirection: 'column', gap: 32 }}>

@@ -1,52 +1,41 @@
 import logging
 from contextlib import asynccontextmanager
-
+import asyncio
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-
 from core.database import init_db
 from routers import cameras, events, recordings, streams
-import asyncio
-from services.ai_worker import ai_background_task
+from services.ai_worker import ai_background_task, recording_background_task
 
-log = logging.getLogger("open_nvr.server")
+log = logging.getLogger("netre.server")
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Startup
-    log.info("Starting up Netre VMS server...")
+    log.info("Starting Netre VMS...")
     init_db()
-    log.info("Database initialized.")
-    
-    # Start the AI Background Worker
     ai_task = asyncio.create_task(ai_background_task())
-    
+    rec_task = asyncio.create_task(recording_background_task())
     yield
-    
-    # Shutdown
-    log.info("Shutting down Netre VMS server...")
     ai_task.cancel()
+    rec_task.cancel()
 
-app = FastAPI(
-    title="Netre VMS API",
-    version="1.0.0",
-    lifespan=lifespan,
-)
 
-# CORS configuration for the frontend
+app = FastAPI(title="Netre VMS API", version="1.0.0", lifespan=lifespan)
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173", "http://localhost:5174", "*"],
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# Include Routers
 app.include_router(cameras.router, prefix="/api/v1")
 app.include_router(events.router, prefix="/api/v1")
 app.include_router(recordings.router, prefix="/api/v1")
 app.include_router(streams.router, prefix="/api/v1")
+
 
 @app.get("/")
 def read_root():

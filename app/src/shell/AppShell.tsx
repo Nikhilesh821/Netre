@@ -19,7 +19,7 @@ export function AppShell() {
         const res = await fetch('http://localhost:8000/api/v1/events/recent-alerts');
         if (res.ok) {
           const data = await res.json();
-          setAlertCount(data.count || 0);
+          setAlertCount(data.length || 0);
         }
       } catch (e) {
         // ignore
