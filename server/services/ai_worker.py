@@ -2,7 +2,6 @@ import asyncio
 import logging
 import time
 import os
-import sys
 from datetime import datetime
 from pathlib import Path
 from sqlalchemy.orm import Session
@@ -11,60 +10,141 @@ import models
 import cv2
 import numpy as np
 
-sys.path.append(os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "detect-pipeline"))
-
-from detect_pipeline.motion import MotionDetector, MotionConfig
-from detect_pipeline.onnx_detector import OnnxYoloDetector
-from detect_pipeline.detector import RawDetection
-
 log = logging.getLogger("netre.ai_worker")
 
 RECORDINGS_DIR = Path(__file__).parent.parent / "recordings"
 RECORDINGS_DIR.mkdir(exist_ok=True)
 
-SEGMENT_DURATION_SECS = 300
+SEGMENT_SECS = 300
+MODEL_PATH = Path(__file__).parent.parent.parent / "detect-pipeline" / "models" / "yolov8n.onnx"
 
-model_path = os.path.join(
-    os.path.dirname(os.path.dirname(os.path.dirname(__file__))),
-    "detect-pipeline", "models", "yolov8n.onnx"
-)
+COCO_LABELS = [
+    "person","bicycle","car","motorcycle","airplane","bus","train","truck","boat",
+    "traffic light","fire hydrant","stop sign","parking meter","bench","bird","cat",
+    "dog","horse","sheep","cow","elephant","bear","zebra","giraffe","backpack",
+    "umbrella","handbag","tie","suitcase","frisbee","skis","snowboard","sports ball",
+    "kite","baseball bat","baseball glove","skateboard","surfboard","tennis racket",
+    "bottle","wine glass","cup","fork","knife","spoon","bowl","banana","apple",
+    "sandwich","orange","broccoli","carrot","hot dog","pizza","donut","cake","chair",
+    "couch","potted plant","bed","dining table","toilet","tv","laptop","mouse",
+    "remote","keyboard","cell phone","microwave","oven","toaster","sink","refrigerator",
+    "book","clock","vase","scissors","teddy bear","hair drier","toothbrush"
+]
 
-class _MockDetector:
-    def detect(self, frame):
+DETECT_LABELS = {"person", "car", "truck", "bicycle", "motorcycle", "dog", "cat", "bus"}
+
+_session = None
+
+def _get_ort_session():
+    global _session
+    if _session is not None:
+        return _session
+    if not MODEL_PATH.exists():
+        log.warning(f"ONNX model not found at {MODEL_PATH}. Detection disabled.")
+        return None
+    try:
+        import onnxruntime as ort
+        opts = ort.SessionOptions()
+        opts.inter_op_num_threads = 2
+        opts.intra_op_num_threads = 2
+        _session = ort.InferenceSession(str(MODEL_PATH), sess_options=opts, providers=["CPUExecutionProvider"])
+        log.info(f"YOLOv8n ONNX loaded from {MODEL_PATH}")
+        return _session
+    except Exception as e:
+        log.error(f"Failed to load ONNX model: {e}")
+        return None
+
+
+def _preprocess(frame: np.ndarray, size: int = 640):
+    h, w = frame.shape[:2]
+    scale = size / max(h, w)
+    nh, nw = int(h * scale), int(w * scale)
+    resized = cv2.resize(frame, (nw, nh))
+    padded = np.zeros((size, size, 3), dtype=np.uint8)
+    padded[:nh, :nw] = resized
+    inp = padded.astype(np.float32) / 255.0
+    inp = inp.transpose(2, 0, 1)[np.newaxis]
+    return inp, scale, 0, 0
+
+
+def _postprocess(outputs, scale, conf_thresh=0.35):
+    preds = outputs[0][0].T
+    results = []
+    for row in preds:
+        scores = row[4:]
+        cls_id = int(np.argmax(scores))
+        conf = float(scores[cls_id])
+        if conf < conf_thresh:
+            continue
+        label = COCO_LABELS[cls_id] if cls_id < len(COCO_LABELS) else f"cls{cls_id}"
+        if label not in DETECT_LABELS:
+            continue
+        cx, cy, bw, bh = row[:4]
+        x1 = (cx - bw / 2) / scale
+        y1 = (cy - bh / 2) / scale
+        x2 = (cx + bw / 2) / scale
+        y2 = (cy + bh / 2) / scale
+        results.append((label, conf, x1, y1, x2, y2))
+    return results
+
+
+def _run_yolo(frame: np.ndarray):
+    sess = _get_ort_session()
+    if sess is None:
         return []
-
-try:
-    if not os.path.exists(model_path):
-        raise FileNotFoundError(f"YOLOv8 ONNX not found at {model_path}")
-    detector = OnnxYoloDetector(model_path)
-    log.info("YOLOv8n ONNX detector loaded successfully.")
-except Exception as e:
-    log.warning(f"Could not load ONNX detector: {e}. AI detection disabled until model is available.")
-    detector = _MockDetector()
-
-_camera_fail_counts: dict[int, int] = {}
-_last_event_times: dict[tuple, float] = {}
-_motion_detectors: dict[int, MotionDetector] = {}
+    inp, scale, _, _ = _preprocess(frame)
+    outputs = sess.run(None, {sess.get_inputs()[0].name: inp})
+    return _postprocess(outputs, scale)
 
 
-def _get_motion_detector(cam_id: int, h: int, w: int) -> MotionDetector:
-    key = (cam_id, h, w)
-    if key not in _motion_detectors:
-        _motion_detectors[key] = MotionDetector((h, w), MotionConfig())
-    return _motion_detectors[key]
-
-
-def _resolve_stream_url(cam: models.Camera) -> str:
+def _resolve_url(cam: models.Camera) -> str:
     url = cam.stream_url or ""
     if url and not url.startswith(("http://", "https://", "rtsp://")):
         base = Path(__file__).parent.parent
-        resolved = base / url
-        if resolved.exists():
-            return str(resolved)
-        alt = Path(__file__).parent.parent.parent.parent / url
-        if alt.exists():
-            return str(alt)
+        for candidate in [base / url, base.parent.parent / url]:
+            if candidate.exists():
+                return str(candidate)
     return url
+
+
+_last_event: dict[tuple, float] = {}
+_cam_fail: dict[int, int] = {}
+
+
+def _check_zones(detections, zones, frame_w: int, frame_h: int, cam, db: Session):
+    for label, conf, x1, y1, x2, y2 in detections:
+        foot_x = (x1 + x2) / 2.0
+        foot_y = y2
+
+        for zone in zones:
+            try:
+                pts_raw = zone.polygon_points
+                if not pts_raw or len(pts_raw) < 3:
+                    continue
+                polygon = np.array(
+                    [[float(p[0]) * frame_w, float(p[1]) * frame_h] for p in pts_raw],
+                    dtype=np.float32
+                )
+            except Exception as e:
+                log.debug(f"Zone parse error: {e}")
+                continue
+
+            result = cv2.pointPolygonTest(polygon, (foot_x * frame_w, foot_y * frame_h), False)
+            if result >= 0:
+                key = (cam.id, zone.id, label)
+                now = time.time()
+                if now - _last_event.get(key, 0) > 10:
+                    _last_event[key] = now
+                    event = models.Event(
+                        camera_id=cam.id,
+                        zone_id=zone.id,
+                        label=label,
+                        confidence=conf,
+                        caption=f"Detected {label} in zone '{zone.name}'"
+                    )
+                    db.add(event)
+                    db.commit()
+                    log.info(f"EVENT SAVED: {event.caption} | cam={cam.id} conf={conf:.0%}")
 
 
 def run_inference_cycle():
@@ -72,23 +152,25 @@ def run_inference_cycle():
     try:
         cameras = db.query(models.Camera).all()
         for cam in cameras:
-            stream_url = _resolve_stream_url(cam)
-            if not stream_url:
+            url = _resolve_url(cam)
+            if not url:
                 continue
 
-            cap = cv2.VideoCapture(stream_url)
+            cap = cv2.VideoCapture(url)
             if not cap.isOpened():
-                _camera_fail_counts[cam.id] = _camera_fail_counts.get(cam.id, 0) + 1
-                if _camera_fail_counts[cam.id] >= 3:
-                    if cam.status != "offline":
-                        cam.status = "offline"
-                        db.commit()
+                _cam_fail[cam.id] = _cam_fail.get(cam.id, 0) + 1
+                if _cam_fail[cam.id] >= 3 and cam.status != "offline":
+                    cam.status = "offline"
+                    db.commit()
+                    log.info(f"Camera {cam.id} marked offline")
+                cap.release()
                 continue
 
-            _camera_fail_counts[cam.id] = 0
+            _cam_fail[cam.id] = 0
             if cam.status != "online":
                 cam.status = "online"
                 db.commit()
+                log.info(f"Camera {cam.id} marked online")
 
             ret, frame = cap.read()
             cap.release()
@@ -96,57 +178,19 @@ def run_inference_cycle():
             if not ret or frame is None:
                 continue
 
-            if not cam.zones:
+            zones = db.query(models.Zone).filter(models.Zone.camera_id == cam.id).all()
+            if not zones:
                 continue
 
             h, w = frame.shape[:2]
-            gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-            motion_det = _get_motion_detector(cam.id, h, w)
-            motion_boxes = motion_det.detect(gray)
+            detections = _run_yolo(frame)
+            log.debug(f"Camera {cam.id}: {len(detections)} detections")
 
-            if not motion_boxes or motion_det.is_calibrating():
-                continue
-
-            detections = detector.detect(frame)
-
-            for det in detections:
-                for zone in cam.zones:
-                    try:
-                        raw_pts = zone.polygon_points
-                        if isinstance(raw_pts, list) and len(raw_pts) >= 3:
-                            if isinstance(raw_pts[0], (list, tuple)):
-                                polygon = [(float(p[0]) * w, float(p[1]) * h) for p in raw_pts]
-                            else:
-                                polygon = [(float(p.get("x", p[0])) * w, float(p.get("y", p[1])) * h) for p in raw_pts]
-                        else:
-                            continue
-                    except Exception:
-                        continue
-
-                    bx1, by1, bx2, by2 = det.box
-                    cx = ((bx1 + bx2) / 2.0) * w
-                    cy = by2 * h
-
-                    poly_arr = np.array(polygon, dtype=np.float32)
-                    result = cv2.pointPolygonTest(poly_arr, (cx, cy), False)
-                    if result >= 0:
-                        key = (cam.id, zone.id, det.label)
-                        now = time.time()
-                        if now - _last_event_times.get(key, 0) > 10:
-                            _last_event_times[key] = now
-                            event = models.Event(
-                                camera_id=cam.id,
-                                zone_id=zone.id,
-                                label=det.label,
-                                confidence=det.confidence,
-                                caption=f"Detected {det.label} in zone '{zone.name}'"
-                            )
-                            db.add(event)
-                            db.commit()
-                            log.info(f"EVENT: {event.caption} | cam={cam.id} confidence={det.confidence:.0%}")
+            if detections:
+                _check_zones(detections, zones, w, h, cam, db)
 
     except Exception as e:
-        log.error(f"AI inference cycle error: {e}", exc_info=True)
+        log.error(f"Inference cycle error: {e}", exc_info=True)
     finally:
         db.close()
 
@@ -156,18 +200,18 @@ def run_recording_cycle():
     try:
         cameras = db.query(models.Camera).filter(models.Camera.status == "online").all()
         for cam in cameras:
-            stream_url = _resolve_stream_url(cam)
-            if not stream_url:
+            url = _resolve_url(cam)
+            if not url:
                 continue
 
-            cap = cv2.VideoCapture(stream_url)
+            cap = cv2.VideoCapture(url)
             if not cap.isOpened():
+                cap.release()
                 continue
 
             fps = cap.get(cv2.CAP_PROP_FPS) or 20.0
             w = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH)) or 640
             h = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT)) or 480
-            cap.release()
 
             cam_dir = RECORDINGS_DIR / str(cam.id)
             cam_dir.mkdir(exist_ok=True)
@@ -176,15 +220,13 @@ def run_recording_cycle():
             filename = f"{start_time.strftime('%Y%m%d_%H%M%S')}.mp4"
             filepath = cam_dir / filename
 
-            fourcc = cv2.VideoWriter_fourcc(*"mp4v")
+            fourcc = cv2.VideoWriter_fourcc(*"avc1")
             writer = cv2.VideoWriter(str(filepath), fourcc, fps, (w, h))
-
-            cap2 = cv2.VideoCapture(stream_url)
             frames_written = 0
-            max_frames = int(SEGMENT_DURATION_SECS * fps)
+            max_frames = int(SEGMENT_SECS * fps)
 
             while frames_written < max_frames:
-                ret, frame = cap2.read()
+                ret, frame = cap.read()
                 if not ret:
                     break
                 if frame.shape[1] != w or frame.shape[0] != h:
@@ -192,7 +234,7 @@ def run_recording_cycle():
                 writer.write(frame)
                 frames_written += 1
 
-            cap2.release()
+            cap.release()
             writer.release()
 
             if frames_written > 10:
@@ -205,7 +247,7 @@ def run_recording_cycle():
                 )
                 db.add(rec)
                 db.commit()
-                log.info(f"Recording saved: {filepath} ({frames_written} frames)")
+                log.info(f"Segment saved: {filepath} ({frames_written} frames)")
             else:
                 filepath.unlink(missing_ok=True)
 
@@ -217,7 +259,7 @@ def run_recording_cycle():
 
 async def ai_background_task():
     log.info("AI background worker started.")
-    recording_task = None
+    _get_ort_session()
     while True:
         await asyncio.to_thread(run_inference_cycle)
         await asyncio.sleep(2)

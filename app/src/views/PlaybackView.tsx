@@ -19,7 +19,8 @@ export function PlaybackView() {
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
   const [playbackRate, setPlaybackRate] = useState(1);
-  const [videoError, setVideoError] = useState(false);
+  const [videoSrc, setVideoSrc] = useState('');
+  const [noRecordings, setNoRecordings] = useState(false);
   const [recordingStartTime, setRecordingStartTime] = useState<Date | null>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
 
@@ -44,12 +45,16 @@ export function PlaybackView() {
       .then(recs => {
         setRecordings(recs);
         if (recs.length > 0) {
-          setRecordingStartTime(new Date(recs[0].start_time));
+          const latest = recs[0];
+          setRecordingStartTime(new Date(latest.start_time));
+          setNoRecordings(false);
+          setVideoSrc(`${API_BASE}/streams/playback/recording/${latest.id}`);
+        } else {
+          setNoRecordings(true);
+          setVideoSrc('');
         }
       })
-      .catch(console.error);
-
-    setVideoError(false);
+      .catch(() => { setNoRecordings(true); setVideoSrc(''); });
   }, [selectedCamId]);
 
   useEffect(() => {
@@ -172,19 +177,21 @@ export function PlaybackView() {
           </div>
 
           <div style={{ position: 'relative', aspectRatio: '16/9', background: '#000', borderRadius: 'var(--radius-lg)', overflow: 'hidden', boxShadow: 'var(--shadow-md)' }}>
-            {videoError || !videoSrc ? (
+            {noRecordings || !videoSrc ? (
               <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: '#9ca3af', gap: 12 }}>
                 <svg width="48" height="48" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 10l4.553-2.069A1 1 0 0121 8.871v6.258a1 1 0 01-1.447.894L15 14M3 8a2 2 0 012-2h8a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2V8z" /></svg>
                 <span style={{ fontSize: 14 }}>No recordings yet for this camera</span>
-                <span style={{ fontSize: 12, color: '#6b7280' }}>Start a live stream to begin recording automatically</span>
+                <span style={{ fontSize: 12, color: '#6b7280' }}>Recording starts automatically when camera is online</span>
               </div>
             ) : (
               <video
+                key={videoSrc}
                 ref={videoRef}
                 src={videoSrc}
+                controls
                 onTimeUpdate={handleTimeUpdate}
                 onLoadedMetadata={handleTimeUpdate}
-                onError={() => setVideoError(true)}
+                onError={(e) => console.error('Video error:', e)}
                 onPlay={() => setIsPlaying(true)}
                 onPause={() => setIsPlaying(false)}
                 style={{ width: '100%', height: '100%', objectFit: 'contain' }}
@@ -236,13 +243,8 @@ export function PlaybackView() {
                     key={rec.id}
                     onClick={() => {
                       setRecordingStartTime(new Date(rec.start_time));
-                      if (videoRef.current) {
-                        videoRef.current.src = `${API_BASE}/streams/playback/recording/${rec.id}`;
-                        videoRef.current.load();
-                        videoRef.current.play();
-                        setIsPlaying(true);
-                        setVideoError(false);
-                      }
+                      setVideoSrc(`${API_BASE}/streams/playback/recording/${rec.id}`);
+                      setNoRecordings(false);
                     }}
                     style={{ padding: '8px 12px', background: 'var(--bg-panel)', border: '1px solid var(--border)', borderRadius: 8, cursor: 'pointer', whiteSpace: 'nowrap', fontSize: 13 }}
                   >
