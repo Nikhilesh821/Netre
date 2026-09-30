@@ -127,7 +127,7 @@ export function PlaybackView() {
     return Math.max(0, Math.min(100, (offsetSecs / duration) * 100));
   };
 
-  const videoSrc = selectedCamId ? `${API_BASE}/streams/playback/${selectedCamId}` : '';
+
 
   return (
     <>
